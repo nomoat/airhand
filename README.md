@@ -16,10 +16,12 @@ what is happening and keeps **Stop** within reach.
 
 - **No root required.** No connected computer is needed after installation.
 - **Visible actions.** A draggable floating control stays on screen during tasks.
+- **Screen stays on during tasks.** The floating control keeps the screen bright
+  while another app is open. Stop or finish the task to restore normal screen timeout.
 - **Bring your own key.** The current backend is the Rebyte Agents API.
 - **Open source.** Inspect and change the Android executor and cloud integration.
-- **English interface.** Text input works directly; voice input uses an installed
-  Android speech-recognition service.
+- **English interface.** Type your task and select **Start task**. Use the × button
+  in the input field to clear it for a new task.
 
 This is an early developer release. It has been tested with YouTube on an Android
 emulator and a Pixel phone. Compatibility with every app or device is not implied.
@@ -126,7 +128,7 @@ your own Rebyte API key with Agents API access. See [Rebyte documentation](https
 for account and API setup. No key or API credit is bundled. AirHand's source and
 APK are free; cloud usage is billed separately under your provider account.
 
-1. Download `AirHand-0.3.1.apk` from [Releases](https://github.com/nomoat/airhand/releases/latest).
+1. Download `AirHand-0.3.2.apk` from [Releases](https://github.com/nomoat/airhand/releases/latest).
 2. Open the APK on your phone. If Android asks, allow this installation source.
 3. Open **AirHand**, select **Set API key**, and save your Rebyte key.
 4. Select **AirHand control**, read the disclosure, and open its settings page.
@@ -139,9 +141,8 @@ APK are free; cloud usage is billed separately under your provider account.
    be installed and usable. Drag the floating control by its text area; select
    **Stop** to end the agent's execution.
 
-The universal APK does not require Google Play Services. Voice input depends on
-an installed speech-recognition service; typing does not. Voice recognition fills
-the task field, and you still select **Start task** to run it.
+The universal APK does not require Google Play Services. Enter tasks as text;
+the × button clears the input without changing the current run or saved API key.
 
 ### Get a Rebyte API key
 
@@ -189,7 +190,6 @@ References: [Xiaomi downloaded accessibility services](https://www.mi.com/global
 | App cannot be found | Install and open the target app manually first. Resolve its login or first-run prompts. |
 | Task pauses | Unlock the phone, check network and accessibility access, then use Reconnect if offered. |
 | Previous action needs review | Inspect the target app, stop that run, and begin a new task. AirHand will not blindly repeat it. |
-| No voice service | Type the task, or install/configure your device's speech-recognition service. |
 | APK update rejected | Confirm the installed build and APK have the same signing certificate. Debug and release builds use different certificates. |
 
 Some apps expose incomplete accessibility information or block screenshots.
@@ -230,7 +230,7 @@ Release builds are not debuggable and cannot import a key from a debug file.
 debug-build helpers. They are not needed on a user's phone.
 
 ```sh
-python3 scripts/package_source.py --output /path/to/AirHand-0.3.1-source.zip
+python3 scripts/package_source.py --output /path/to/AirHand-0.3.2-source.zip
 ```
 
 The source exporter uses an explicit allowlist. It excludes build output,

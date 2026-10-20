@@ -36,17 +36,18 @@ This does not delete cloud session history. Manage cloud data and API access in
 the organization that owns your key; the cloud provider's terms govern its
 processing and retention.
 
-## Voice and permissions
+## Permissions and screen behavior
 
-**Use voice** opens the phone's installed speech-recognition service. That
-service's own privacy terms apply; recognition may use its provider's network.
-The recognized text fills the task field, and the task starts only when you
-select **Start task**. AirHand does not implement continuous microphone recording.
+Tasks use text input. AirHand does not request microphone permission or launch
+a speech-recognition service.
 
 Accessibility is used for screen reading, screenshots, taps, swipes, text entry,
 system navigation, and visible task controls. A foreground notification provides
-another Stop control. A bounded wake lock keeps an already unlocked screen
-available during an active task. The app has no boot receiver and does not
+another Stop control. The floating window keeps the screen on at its normal
+brightness during a task, including while another app is open. A bounded wake
+lock also keeps an already unlocked screen available. These requests are released
+when the task stops or ends; the app does not change the system screen timeout
+or brightness settings. The app has no boot receiver and does not
 start tasks on its own. There is no analytics or advertising SDK in this app.
 
 Select **Stop** in the floating control or notification to halt local actions.

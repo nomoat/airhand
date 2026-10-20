@@ -17,8 +17,9 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
-import android.speech.RecognizerIntent
 import android.text.InputType
+import android.text.Editable
+import android.text.TextWatcher
 import android.view.Gravity
 import android.view.View
 import android.view.WindowManager
@@ -137,18 +138,37 @@ class MainActivity : Activity() {
             textSize = 16f; setTextColor(ink); setHintTextColor(muted)
             inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE
             gravity = Gravity.TOP; minLines = 3; maxLines = 5
-            setPadding(0, dp(8), 0, dp(8))
+            setPaddingRelative(0, dp(8), dp(48), dp(8))
             contentDescription = "Task description"
         }
-        card.addFull(task)
+        val taskField = FrameLayout(this)
+        taskField.addView(task, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT))
+        val clearTask = ImageButton(this).apply {
+            setImageResource(R.drawable.ic_clear)
+            contentDescription = "Clear task"
+            val selectable = android.util.TypedValue()
+            theme.resolveAttribute(android.R.attr.selectableItemBackgroundBorderless, selectable, true)
+            setBackgroundResource(selectable.resourceId)
+            setPadding(dp(12), dp(12), dp(12), dp(12))
+            visibility = View.GONE
+            setOnClickListener {
+                task.text.clear()
+                task.requestFocus()
+                (getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager).showSoftInput(task, InputMethodManager.SHOW_IMPLICIT)
+            }
+        }
+        taskField.addView(clearTask, FrameLayout.LayoutParams(dp(48), dp(48), Gravity.TOP or Gravity.END))
+        task.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                clearTask.visibility = if (s.isNullOrEmpty()) View.GONE else View.VISIBLE
+            }
+            override fun afterTextChanged(s: Editable?) {}
+        })
+        card.addFull(taskField)
         card.addSpace(12)
-        val actions = LinearLayout(this)
         start = button("Start task", true) { begin(false) }
-        val voice = button("Use voice") { dictate() }
-        actions.addView(start, LinearLayout.LayoutParams(0, dp(50), 1f))
-        actions.addView(Space(this), LinearLayout.LayoutParams(dp(10), 1))
-        actions.addView(voice, LinearLayout.LayoutParams(0, dp(50), 1f))
-        card.addFull(actions)
+        card.addFull(start, 50)
         card.addSpace(10)
         card.addFull(label("During a task, screen text and screenshots are sent to Rebyte. Keep your phone unlocked. The floating control shows each step and lets you stop at any time.", 12f, muted))
         body.addSpace(16)
@@ -244,23 +264,8 @@ class MainActivity : Activity() {
             if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED)
                 requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 4)
             startForegroundService(Intent(this, AgentRunService::class.java).putExtra(AgentRunService.RUN_ID, run.id))
-            window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
             update()
         } catch (e: Exception) { Toast.makeText(this, e.message, Toast.LENGTH_LONG).show() }
-    }
-    private fun dictate() {
-        try {
-            startActivityForResult(Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH)
-                .putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-                .putExtra(RecognizerIntent.EXTRA_PROMPT, "What would you like your phone to do?"), 10)
-        } catch (_: ActivityNotFoundException) {
-            Toast.makeText(this, "No speech recognition service is available. Type your task instead.", Toast.LENGTH_LONG).show()
-        }
-    }
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode == 10 && resultCode == RESULT_OK)
-            data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull()?.let { task.setText(it) }
     }
     private fun update() {
         if (!::status.isInitialized) return
@@ -287,7 +292,6 @@ class MainActivity : Activity() {
             }
             logs.text = "Status: $stateLabel\n\n${store.logText(run.id)}"
         }
-        if (!active) window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
     }
     override fun onResume() { super.onResume(); handler.post(refresh) }
     override fun onPause() { handler.removeCallbacks(refresh); super.onPause() }

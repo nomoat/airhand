@@ -30,6 +30,8 @@ class AgentRunService : Service() {
     }
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == STOP) {
+            wakeLock?.let { if (it.isHeld) it.release() }
+            taskOverlay?.releaseScreenOn()
             if (job?.isActive == true) job?.cancel()
             else {
                 val id = intent.getStringExtra(RUN_ID)
@@ -206,6 +208,7 @@ class AgentRunService : Service() {
     override fun onDestroy() {
         scope.cancel()
         wakeLock?.let { if (it.isHeld) it.release() }
+        taskOverlay?.releaseScreenOn()
         super.onDestroy()
     }
 }

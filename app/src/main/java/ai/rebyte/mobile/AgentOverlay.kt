@@ -35,6 +35,7 @@ internal class AgentOverlay(private val service: PhoneAccessibilityService) {
     private var stopping = false
     private var closeAction: (() -> Unit)? = null
     private val dismiss = Runnable { remove() }
+    private val screenTimeout = Runnable { releaseScreenOn() }
     private val ink = Color.rgb(241, 247, 239)
     private fun dp(value: Int) = (value * service.resources.displayMetrics.density).toInt()
     // Reserve room for two action lines, including CJK font metrics and the user's font size.
@@ -58,7 +59,7 @@ internal class AgentOverlay(private val service: PhoneAccessibilityService) {
         params = WindowManager.LayoutParams(
             minOf(dp(360), safe.width), panelHeight(), WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
-                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON,
             PixelFormat.TRANSLUCENT
         ).apply {
             gravity = Gravity.TOP or Gravity.LEFT
@@ -116,6 +117,7 @@ internal class AgentOverlay(private val service: PhoneAccessibilityService) {
         }
         card = view
         try { manager.addView(view, params) } catch (e: Exception) { card = null; owner = null; throw e }
+        handler.postDelayed(screenTimeout, 12 * 60_000L)
         update(runId, 0, "Connecting to Rebyte", "Connect to begin · Drag to move")
     }
     fun update(runId: String, step: Int, message: String, phase: String) {
@@ -156,6 +158,7 @@ internal class AgentOverlay(private val service: PhoneAccessibilityService) {
     }
     fun finish(runId: String, message: String) {
         if (owner != runId || card == null) return
+        releaseScreenOn()
         stopping = false
         title.text = "AIRHAND · TASK ENDED"
         action.text = message
@@ -164,8 +167,15 @@ internal class AgentOverlay(private val service: PhoneAccessibilityService) {
         closeAction = { remove() }
         handler.removeCallbacks(dismiss); handler.postDelayed(dismiss, 6000)
     }
+    fun releaseScreenOn() {
+        handler.removeCallbacks(screenTimeout)
+        val view = card ?: return
+        params.flags = params.flags and WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON.inv()
+        if (view.isAttachedToWindow) manager.updateViewLayout(view, params)
+    }
     fun remove() {
         handler.removeCallbacks(dismiss)
+        handler.removeCallbacks(screenTimeout)
         card?.let { if (it.isAttachedToWindow) manager.removeViewImmediate(it) }
         card = null; owner = null; closeAction = null
     }
