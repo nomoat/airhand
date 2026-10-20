@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">AirHand</string>
+    <string name="accessibility_description">Reads screen text and screenshots and performs taps, swipes, and text input only during tasks you start. Screen content is sent to your Rebyte cloud agent. Stop at any time using the floating control or notification.</string>
+</resources>

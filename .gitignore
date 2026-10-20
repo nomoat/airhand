@@ -1,0 +1,15 @@
+/local.properties
+/.gradle/
+/.kotlin/
+**/build/
+*.apk
+*.jks
+*.keystore
+*.p12
+.env
+.env.*
+/signing.properties
+/.local/
+!app/src/test/
+!app/src/test/**
+/.impeccable.md

@@ -1,0 +1,23 @@
+AirHand for Android
+
+Developed in a fork of droidrun/mobilerun.
+Upstream Mobilerun: Copyright (c) 2025 Niels Schmidt, MIT License.
+The upstream MIT license and copyright notice are included in LICENSE.
+
+This distribution also uses:
+- Kotlin and the Kotlin standard library — JetBrains contributors.
+  https://github.com/JetBrains/kotlin
+- kotlinx.coroutines — JetBrains and Kotlin contributors.
+  https://github.com/Kotlin/kotlinx.coroutines
+- OkHttp and Okio — Square and contributors.
+  https://github.com/square/okhttp
+  https://github.com/square/okio
+- Java annotations — JetBrains contributors.
+  https://github.com/JetBrains/java-annotations
+- Gradle Wrapper — Gradle contributors (build tooling only).
+  https://github.com/gradle/gradle
+
+These dependencies are provided under Apache License 2.0. License texts and
+available upstream notices are included in app/src/main/assets/licenses/.
+Dependency versions are specified in the Gradle build files and resolved
+through Google's Maven repository and Maven Central.
