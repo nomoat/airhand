@@ -126,11 +126,13 @@ your own Rebyte API key with Agents API access. See [Rebyte documentation](https
 for account and API setup. No key or API credit is bundled. AirHand's source and
 APK are free; cloud usage is billed separately under your provider account.
 
-1. Download `AirHand-0.3.0.apk` from [Releases](https://github.com/nomoat/airhand/releases/latest).
+1. Download `AirHand-0.3.1.apk` from [Releases](https://github.com/nomoat/airhand/releases/latest).
 2. Open the APK on your phone. If Android asks, allow this installation source.
 3. Open **AirHand**, select **Set API key**, and save your Rebyte key.
-4. Select **Enable control**, read the disclosure, and open Android settings.
-   Enable **AirHand control** in accessibility services.
+4. Select **AirHand control**, read the disclosure, and open its settings page.
+   Turn on **Use AirHand control**, confirm, and return to AirHand. If your phone
+   opens the full list, select **Downloaded apps** or **Downloaded services**,
+   then **AirHand control**. You do not need to enable other services.
 5. Allow notifications when prompted so the task notification can show Stop.
 6. Enter a task, for example: **Open YouTube, search Google, and play a video.**
 7. Select **Start task** and keep the phone unlocked. The target app must already
@@ -141,11 +143,28 @@ The universal APK does not require Google Play Services. Voice input depends on
 an installed speech-recognition service; typing does not. Voice recognition fills
 the task field, and you still select **Start task** to run it.
 
+### Get a Rebyte API key
+
+Select **Get a Rebyte API key** in AirHand, or open
+[Rebyte Platform → API keys](https://app.rebyte.ai/platform/api-keys).
+Sign in or create an account, select your organization, and create an organization
+API key. Organization administrators can manage keys; if you cannot create one,
+ask your organization's administrator. Copy the key when it is shown and paste
+it into **Set API key** in AirHand. Use a key with Agents API access and a model
+available to your organization. Cloud usage is billed separately.
+
+The same link and **Read the setup guide** are also in the key-entry dialog.
+For API details, see the [official documentation](https://rebyte.ai/docs).
+
 ### Xiaomi / Redmi / POCO
 
 Xiaomi compatibility has **not yet been verified on hardware**. Settings vary by
 MIUI/HyperOS version and region.
 
+- In Accessibility, find **Downloaded apps** (sometimes **Downloaded services**),
+  then **AirHand control**, and turn its service on. The app tries to open this
+  exact page first. Vendor versions that do not support that shortcut show the
+  accessibility list instead.
 - Sideloaded apps can initially have accessibility access restricted. If Android
   offers it, open AirHand's app information page, select **Allow restricted
   settings**, and then enable **AirHand control**.
@@ -156,7 +175,8 @@ MIUI/HyperOS version and region.
   AirHand itself has no boot receiver and does not start tasks automatically.
 - Keep the device unlocked. AirHand does not bypass its lock screen.
 
-References: [Android restricted settings](https://support.google.com/android/answer/12623953?hl=en),
+References: [Xiaomi downloaded accessibility services](https://www.mi.com/global/support/faq/details/KA-728047/),
+[Android restricted settings](https://support.google.com/android/answer/12623953?hl=en),
 [Xiaomi background networking](https://www.mi.com/global/support/faq/details/KA-538010/),
 [Xiaomi background autostart](https://www.mi.com/global/support/faq/details/KA-507611/).
 
@@ -210,7 +230,7 @@ Release builds are not debuggable and cannot import a key from a debug file.
 debug-build helpers. They are not needed on a user's phone.
 
 ```sh
-python3 scripts/package_source.py --output /path/to/AirHand-0.3.0-source.zip
+python3 scripts/package_source.py --output /path/to/AirHand-0.3.1-source.zip
 ```
 
 The source exporter uses an explicit allowlist. It excludes build output,

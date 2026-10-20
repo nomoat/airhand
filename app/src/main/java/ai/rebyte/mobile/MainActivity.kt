@@ -5,6 +5,9 @@ import android.app.Activity
 import android.app.AlertDialog
 import android.content.ActivityNotFoundException
 import android.content.Intent
+import android.content.ComponentName
+import android.net.Uri
+import android.graphics.Paint
 import android.content.pm.PackageManager
 import android.graphics.Color
 import android.graphics.Typeface
@@ -52,6 +55,45 @@ class MainActivity : Activity() {
         background = shape(if (primary) green else Color.rgb(228, 236, 226), 14)
         minHeight = dp(48); setPadding(dp(12), dp(8), dp(12), dp(8))
         setOnClickListener { click() }
+    }
+    private fun link(value: String, click: () -> Unit) = label(value, 14f, green).apply {
+        paintFlags = paintFlags or Paint.UNDERLINE_TEXT_FLAG
+        gravity = Gravity.CENTER_VERTICAL
+        minHeight = dp(48)
+        isFocusable = true
+        setOnClickListener { click() }
+    }
+    private fun openWeb(url: String) {
+        try { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }
+        catch (_: ActivityNotFoundException) {
+            AlertDialog.Builder(this).setTitle("Open this link in a browser")
+                .setMessage(url).setPositiveButton("OK", null).show()
+        }
+    }
+    private fun openControlSettings() {
+        val details = Intent("android.settings.ACCESSIBILITY_DETAILS_SETTINGS")
+            .putExtra(Intent.EXTRA_COMPONENT_NAME, ComponentName(this, PhoneAccessibilityService::class.java))
+        try { startActivity(details) }
+        catch (_: ActivityNotFoundException) { openAccessibilityList() }
+        catch (_: SecurityException) { openAccessibilityList() }
+    }
+    private fun openAccessibilityList() {
+        try {
+            startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+            Toast.makeText(this, "Open Downloaded apps or Downloaded services, then AirHand control.", Toast.LENGTH_LONG).show()
+        } catch (_: ActivityNotFoundException) {
+            AlertDialog.Builder(this).setTitle("Enable AirHand control")
+                .setMessage("Open Android Settings > Accessibility > Downloaded apps or Downloaded services > AirHand control. Turn on Use AirHand control, then return here.")
+                .setPositiveButton("OK", null).show()
+        }
+    }
+    private fun openAppInfo() {
+        try {
+            startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName")))
+            Toast.makeText(this, "If Android shows it, use the menu to Allow restricted settings.", Toast.LENGTH_LONG).show()
+        } catch (_: ActivityNotFoundException) {
+            Toast.makeText(this, "Open Android Settings > Apps > AirHand > App info.", Toast.LENGTH_LONG).show()
+        }
     }
     private fun LinearLayout.addSpace(n: Int) { addView(View(this@MainActivity), LinearLayout.LayoutParams(1, dp(n))) }
     private fun LinearLayout.addFull(view: View, height: Int = LinearLayout.LayoutParams.WRAP_CONTENT) {
@@ -111,10 +153,11 @@ class MainActivity : Activity() {
         card.addFull(label("During a task, screen text and screenshots are sent to Rebyte. Keep your phone unlocked. The floating control shows each step and lets you stop at any time.", 12f, muted))
         body.addSpace(16)
         val config = LinearLayout(this)
-        val access = button("Enable control") {
-            AlertDialog.Builder(this).setTitle("Allow AirHand to control your phone")
-                .setMessage("When you start a task, AirHand uses accessibility to read screen text, capture screenshots, tap, swipe, and enter text. Screen content is sent to your Rebyte cloud agent. You can stop a task from the floating control and turn off access in Android settings.")
-                .setPositiveButton("Open settings") { _, _ -> startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) }
+        val access = button("AirHand control") {
+            AlertDialog.Builder(this).setTitle("Enable AirHand control")
+                .setMessage("On the next screen, turn on Use AirHand control and confirm, then return here.\n\nIf your phone shows a list, open Downloaded apps or Downloaded services > AirHand control. This is the only service you need to enable.\n\nDuring tasks you start, AirHand reads screen text and screenshots, taps, swipes, and types. Screen content goes to your Rebyte cloud agent. Use the floating Stop control at any time.\n\nIf Android blocks access with Restricted settings, open App info and look for Allow restricted settings in its menu.")
+                .setPositiveButton("Open AirHand settings") { _, _ -> openControlSettings() }
+                .setNeutralButton("App info") { _, _ -> openAppInfo() }
                 .setNegativeButton("Cancel", null).show()
         }
         keyButton = button("Set API key") { keyDialog() }
@@ -122,6 +165,9 @@ class MainActivity : Activity() {
         config.addView(Space(this), LinearLayout.LayoutParams(dp(10), 1))
         config.addView(keyButton, LinearLayout.LayoutParams(0, dp(48), 1f))
         body.addFull(config)
+        body.addSpace(6)
+        body.addFull(label("In Android settings, enable only AirHand control.", 12f, muted))
+        body.addFull(link("Get a Rebyte API key") { openWeb("https://app.rebyte.ai/platform/api-keys") })
         body.addSpace(8)
         body.addFull(button("Choose model") { modelDialog() })
         body.addSpace(22)
@@ -157,9 +203,16 @@ class MainActivity : Activity() {
             importantForAutofill = View.IMPORTANT_FOR_AUTOFILL_NO
             setSingleLine()
         }
+        val form = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(24), dp(8), dp(24), 0)
+            addFull(input)
+            addFull(link("Get a Rebyte API key") { openWeb("https://app.rebyte.ai/platform/api-keys") })
+            addFull(link("Read the setup guide") { openWeb("https://github.com/nomoat/airhand#get-a-rebyte-api-key") })
+        }
         val dialog = AlertDialog.Builder(this).setTitle("Your Rebyte API key")
-            .setMessage("Your key is stored on this device, encrypted with Android Keystore. It is not included in task logs.")
-            .setView(input).setPositiveButton("Save", null).setNegativeButton("Cancel", null)
+            .setMessage("Create a key in Rebyte Platform, then paste it here. Cloud usage is billed separately. Your key is stored on this device, encrypted with Android Keystore.")
+            .setView(form).setPositiveButton("Save", null).setNegativeButton("Cancel", null)
             .setNeutralButton("Delete key") { _, _ ->
                 if (AgentRunService.runningId == null) { secrets.clear(); update() }
                 else Toast.makeText(this, "Stop the current task first.", Toast.LENGTH_LONG).show()
@@ -212,7 +265,7 @@ class MainActivity : Activity() {
     private fun update() {
         if (!::status.isInitialized) return
         val enabled = PhoneAccessibilityService.connected != null
-        status.text = if (enabled && secrets.hasKey()) "● Ready · No root required" else "○ ${if (!enabled) "Enable phone control to continue" else "Set an API key to continue"}"
+        status.text = if (enabled && secrets.hasKey()) "● Ready · No root required" else "○ ${if (!enabled) "Enable AirHand control to continue" else "Set an API key to continue"}"
         keyButton.text = if (secrets.hasKey()) "API key saved" else "Set API key"
         val run = store.latest()
         val active = AgentRunService.runningId != null
