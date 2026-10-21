@@ -39,6 +39,7 @@ class MainActivity : Activity() {
     private lateinit var resume: Button
     private lateinit var stop: Button
     private lateinit var keyButton: Button
+    private lateinit var budgetButton: Button
     private val handler = Handler(Looper.getMainLooper())
     private val refresh = object : Runnable {
         override fun run() { update(); handler.postDelayed(this, 1000) }
@@ -167,6 +168,11 @@ class MainActivity : Activity() {
         })
         card.addFull(taskField)
         card.addSpace(12)
+        budgetButton = button("") { budgetDialog() }
+        card.addFull(budgetButton, 48)
+        card.addSpace(6)
+        card.addFull(label("USD · Model calls only. The last call can exceed this amount. Other charges are not included.", 12f, muted))
+        card.addSpace(12)
         start = button("Start task", true) { begin(false) }
         card.addFull(start, 50)
         card.addSpace(10)
@@ -210,6 +216,14 @@ class MainActivity : Activity() {
         body.addFull(logs)
     }
     private fun model(): String = getPreferences(MODE_PRIVATE).getString("model", "gpt-6-luna")!!
+    private fun budget(): Int = RunBudget.selected(getPreferences(MODE_PRIVATE).getInt("max_credits", RunBudget.DEFAULT_CREDITS))
+    private fun budgetDialog() {
+        AlertDialog.Builder(this).setTitle("Model budget per run (USD)")
+            .setSingleChoiceItems(RunBudget.choices.map { RunBudget.dollars(it.toLong()) + if (it == RunBudget.DEFAULT_CREDITS) " (default)" else "" }.toTypedArray(), RunBudget.choices.indexOf(budget())) { dialog, which ->
+                getPreferences(MODE_PRIVATE).edit().putInt("max_credits", RunBudget.choices[which]).apply()
+                update(); dialog.dismiss()
+            }.setNegativeButton("Cancel", null).show()
+    }
     private fun modelDialog() {
         val input = EditText(this).apply { setText(model()); setSingleLine() }
         AlertDialog.Builder(this).setTitle("Rebyte model ID").setView(input)
@@ -256,11 +270,14 @@ class MainActivity : Activity() {
             check(secrets.hasKey()) { "Set your API key first." }
             check(PhoneAccessibilityService.connected != null) { "Enable AirHand control in accessibility settings first." }
             check(AgentRunService.runningId == null) { "A task is already running." }
-            val run = if (retry) requireNotNull(store.latest()) else {
+            val run = if (retry) requireNotNull(store.latest()).also {
+                check(!it.isFinished) { "This task has ended. Start a new task." }
+                check(it.maxCredits != null) { "This older task has no budget. Stop it and start a new task with a budget." }
+            } else {
                 check(task.text.isNotBlank()) { "Enter a task." }
                 val previous = store.latest()
-                check(previous == null || previous.state in listOf("completed", "failed", "cancelled")) { "Stop or resume the previous task first." }
-                store.create(task.text.toString().trim(), model())
+                check(previous == null || previous.isFinished) { "Stop or resume the previous task first." }
+                store.create(task.text.toString().trim(), model(), budget())
             }
             (getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager).hideSoftInputFromWindow(task.windowToken, 0)
             if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED)
@@ -277,11 +294,14 @@ class MainActivity : Activity() {
         val run = store.latest()
         val active = AgentRunService.runningId != null
         start.isEnabled = !active
-        val unfinished = run != null && run.state !in listOf("completed", "failed", "cancelled")
-        resume.visibility = if (!active && unfinished && run?.state != "needs_review") View.VISIBLE else View.GONE
+        budgetButton.text = "Model budget: ${RunBudget.dollars(budget().toLong())}"
+        budgetButton.isEnabled = !active
+        val unfinished = run != null && !run.isFinished
+        resume.visibility = if (!active && unfinished && run?.state != "needs_review" && run?.maxCredits != null) View.VISIBLE else View.GONE
         stop.visibility = if (active || unfinished) View.VISIBLE else View.GONE
         if (run != null) {
-            logs.text = "Status: ${run.stateLabel}\n\n${store.logText(run.id)}"
+            val legacy = if (unfinished && run.maxCredits == null) "\nThis older task has no budget. Stop it, then start a new task." else ""
+            logs.text = "Status: ${run.stateLabel}\n${RunBudget.summary(run.maxCredits, run.creditsUsed)}$legacy\n\n${store.logText(run.id)}"
         }
     }
     override fun onResume() { super.onResume(); handler.post(refresh) }

@@ -30,7 +30,7 @@ No key is included in the APK or source archive.
 ## Local history and cloud history
 
 The app keeps task text, start times, last recorded status, session IDs, Rebyte
-Platform links, activity messages, and cached tool results
+Platform links, per-run model budgets, reported model-credit usage, activity messages, and cached tool results
 in its private SQLite database. Cached results can include screenshots and UI
 text. Uninstalling the app or clearing its Android app data removes local data.
 This does not delete cloud session history. Manage cloud data and API access in
@@ -43,6 +43,11 @@ browser, where your Rebyte login and organization access apply. The URL contains
 Agent and Session IDs, never your API key. For older local records without a
 saved link, tapping the run retrieves that session once with your saved API key
 and stores the resulting link locally. Existing saved links need no API lookup.
+
+Your default model budget is a local preference. Each new task sends its selected
+budget to Rebyte as part of the Session configuration. Rebyte enforces it before
+the next model call, so the final call can exceed the selected amount. The budget
+does not include non-model charges. Reconnecting never resets a run's budget.
 
 ## Permissions and screen behavior
 

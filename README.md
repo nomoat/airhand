@@ -18,6 +18,9 @@ what is happening and keeps **Stop** within reach.
 - **Visible actions.** A draggable floating control stays on screen during tasks.
 - **Local run history.** Open **Run history** to revisit tasks and follow their
   Rebyte links to the cloud execution details. No separate AirHand server is needed.
+- **Model budget per run.** Defaults to **$0.20**, with **$0.10** and **$0.50** options.
+  Rebyte stops further model calls when the Session budget is reached. The final
+  call can exceed the selected amount; other charges are not included.
 - **Screen stays on during tasks.** The floating control keeps the screen bright
   while another app is open. Stop or finish the task to restore normal screen timeout.
 - **Bring your own key.** The current backend is the Rebyte Agents API.
@@ -130,7 +133,7 @@ your own Rebyte API key with Agents API access. See [Rebyte documentation](https
 for account and API setup. No key or API credit is bundled. AirHand's source and
 APK are free; cloud usage is billed separately under your provider account.
 
-1. Download `AirHand-0.3.3.apk` from [Releases](https://github.com/nomoat/airhand/releases/latest).
+1. Download `AirHand-0.3.4.apk` from [Releases](https://github.com/nomoat/airhand/releases/latest).
 2. Open the APK on your phone. If Android asks, allow this installation source.
 3. Open **AirHand**, select **Set API key**, and save your Rebyte key.
 4. Select **AirHand control**, read the disclosure, and open its settings page.
@@ -139,12 +142,37 @@ APK are free; cloud usage is billed separately under your provider account.
    then **AirHand control**. You do not need to enable other services.
 5. Allow notifications when prompted so the task notification can show Stop.
 6. Enter a task, for example: **Open YouTube, search Google, and play a video.**
-7. Select **Start task** and keep the phone unlocked. The target app must already
+7. Check **Model budget** above **Start task**; the default is **$0.20** per run.
+8. Select **Start task** and keep the phone unlocked. The target app must already
    be installed and usable. Drag the floating control by its text area; select
    **Stop** to end the agent's execution.
 
 The universal APK does not require Google Play Services. Enter tasks as text;
 the × button clears the input without changing the current run or saved API key.
+
+### Set a model budget
+
+Select **Model budget** in the task card to choose **$0.10**, **$0.20** (default),
+or **$0.50**. Your choice is saved on this phone and applies to new tasks. There
+is no unlimited option. Each task gets its own Rebyte Session with
+`agent.budget.max_credits` set to 10, 20, or 50; one credit is USD 0.01.
+
+The limit covers model charges for the entire Session, including compaction.
+Rebyte checks the accumulated credits before the next model call. A call already
+allowed to run can put the total above the selected amount. Other charges, such
+as tool use, are excluded. **This is not a strict total-dollar ceiling.** See
+[Rebyte Session budget](https://rebyte.ai/docs/agents-api/configuration#session-budget).
+
+AirHand checks that Rebyte confirms the selected budget before performing phone
+actions. When Rebyte returns `session_budget_exceeded`, the task shows **Budget
+reached** and ends. It does not reconnect, create another Session, or reset the
+budget automatically. Starting another task is a new user action with a new budget.
+Changing the selection never changes an existing task's budget.
+
+Activity and Run history show the saved budget and the latest model-credit usage
+reported by Rebyte, converted to USD. Unknown usage is left blank. Older runs
+are marked **No model budget (older run)**; unfinished runs from older versions
+must be stopped before starting a new task with a budget.
 
 ### Review previous runs
 
@@ -250,7 +278,7 @@ Release builds are not debuggable and cannot import a key from a debug file.
 debug-build helpers. They are not needed on a user's phone.
 
 ```sh
-python3 scripts/package_source.py --output /path/to/AirHand-0.3.3-source.zip
+python3 scripts/package_source.py --output /path/to/AirHand-0.3.4-source.zip
 ```
 
 The source exporter uses an explicit allowlist. It excludes build output,

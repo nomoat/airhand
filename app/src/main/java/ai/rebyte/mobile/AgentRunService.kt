@@ -81,17 +81,25 @@ class AgentRunService : Service() {
             } catch (e: UncertainCall) {
                 store.update(id, "needs_review")
                 store.log(id, e.message!!)
+            } catch (e: BudgetNotConfirmed) {
+                cancelCloud(api, id, "Model budget was not confirmed; stopping task")
+                if (store.get(id).state == "cancelled") store.update(id, "failed")
+                store.log(id, "The cloud did not confirm the selected budget. No phone actions were performed after this check. Try a new task once Rebyte supports the budget setting.")
             } catch (e: Exception) {
-                val rejectedCreation = store.get(id).sessionId == null && e is ApiFailure &&
-                    e.status in 400..499 && e.status !in listOf(408, 409, 429)
-                store.update(id, if (rejectedCreation) "failed" else "paused")
-                store.log(id, if (rejectedCreation) "Cloud task rejected: ${e.message}" else
-                    "Task paused: ${e.message}\nReconnect to continue. Completed actions will not be repeated automatically.")
+                if (e is ApiFailure && e.code == "session_budget_exceeded") budgetReached(id)
+                else {
+                    val rejectedCreation = store.get(id).sessionId == null && e is ApiFailure &&
+                        e.status in 400..499 && e.status !in listOf(408, 409, 429)
+                    store.update(id, if (rejectedCreation) "failed" else "paused")
+                    store.log(id, if (rejectedCreation) "Cloud task rejected: ${e.message}" else
+                        "Task paused: ${e.message}\nReconnect to continue. Completed actions will not be repeated automatically.")
+                }
             } finally {
                 val ending = when (store.get(id).state) {
                     "completed" -> "Task complete"
                     "cancelled" -> "Task stopped"
                     "failed" -> "Task failed. See activity in AirHand."
+                    "budget_reached" -> "Model budget reached. Task ended."
                     else -> "Task paused. See activity in AirHand."
                 }
                 taskOverlay?.finish(id, ending)
@@ -136,13 +144,19 @@ class AgentRunService : Service() {
         }
     }
     private suspend fun run(api: RebyteApi, initial: Run) {
+        check(!initial.isFinished) { "This task has ended. Start a new task." }
+        val maxCredits = requireNotNull(initial.maxCredits) { "This older task has no budget. Stop it and start a new task." }
         requireNotNull(PhoneAccessibilityService.connected) { "Enable AirHand control in accessibility settings first." }
         val session = initial.sessionId ?: if (initial.state == "created") {
             store.update(initial.id, "creating")
-            api.create(initial).also { store.rememberSession(initial.id, it) }.getString("id")
+            api.create(initial).also {
+                store.rememberSession(initial.id, it)
+                store.recordUsage(initial.id, it)
+                if (!RunBudget.confirmed(it, maxCredits)) throw BudgetNotConfirmed()
+            }.getString("id")
         } else api.recover(initial).also { store.update(initial.id, "running", it) }
         store.update(initial.id, "running", session)
-        store.log(initial.id, "Connected to Rebyte · ${initial.model}\nSession: $session")
+        store.log(initial.id, "Connected to Rebyte · ${initial.model}\nModel budget: ${RunBudget.dollars(maxCredits.toLong())}\nSession: $session")
         currentAction = "Preparing the next step"
         overlayStatus(initial.id, "Waiting for cloud")
         val deadline = android.os.SystemClock.elapsedRealtime() + 10 * 60_000
@@ -155,6 +169,9 @@ class AgentRunService : Service() {
             }
             val state = api.retrieve(session)
             if (store.get(initial.id).cloudUrl == null) store.rememberSession(initial.id, state)
+            store.recordUsage(initial.id, state)
+            if (!RunBudget.confirmed(state, maxCredits)) throw BudgetNotConfirmed()
+            if (RunBudget.exceeded(state)) { budgetReached(initial.id); return }
             when (state.getString("status")) {
                 "requires_action" -> {
                     val actions = state.getJSONArray("required_actions")
@@ -193,6 +210,7 @@ class AgentRunService : Service() {
                 }
                 "idle" -> {
                     val turn = api.latestTurn(session)
+                    if (RunBudget.exceeded(turn)) { budgetReached(initial.id); return }
                     val outcome = turn.getString("status")
                     store.update(initial.id, outcome)
                     if (outcome == "completed") status(initial.id, api.answer(session))
@@ -205,6 +223,11 @@ class AgentRunService : Service() {
             }
             delay(1200)
         }
+    }
+    private fun budgetReached(id: String) {
+        store.update(id, "budget_reached")
+        val run = store.get(id)
+        status(id, "Model budget reached. Rebyte stopped further model calls.\n${RunBudget.summary(run.maxCredits, run.creditsUsed)}\nStart a new task if you want to continue. The final model call can exceed the selected budget.")
     }
     override fun onDestroy() {
         scope.cancel()

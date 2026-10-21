@@ -141,12 +141,14 @@ class RunHistoryActivity : Activity() {
                 setPadding(dp(4), dp(16), dp(4), dp(16))
                 addView(label("", 16f).apply { setTypeface(null, Typeface.BOLD) })
                 addView(label("", 12f, muted).apply { setPadding(0, dp(6), 0, dp(6)) })
+                addView(label("", 12f, muted).apply { setPadding(0, 0, 0, dp(6)) })
                 addView(label("", 14f, green))
             }
             val run = rows[position]
             (row.getChildAt(0) as TextView).text = run.task
             (row.getChildAt(1) as TextView).text = "${DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT).format(Date(run.createdAt))} · ${run.stateLabel}"
-            (row.getChildAt(2) as TextView).text = when {
+            (row.getChildAt(2) as TextView).text = RunBudget.summary(run.maxCredits, run.creditsUsed)
+            (row.getChildAt(3) as TextView).text = when {
                 openingId == run.id -> "Looking up run…"
                 run.sessionId == null -> "No Rebyte link yet"
                 else -> "View run in Rebyte ↗"

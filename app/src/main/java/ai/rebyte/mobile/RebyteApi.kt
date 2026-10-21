@@ -10,7 +10,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.util.concurrent.TimeUnit
 
-class ApiFailure(val status: Int, message: String) : Exception(message)
+class ApiFailure(val status: Int, message: String, val code: String? = null) : Exception(message)
 
 /** Native HTTPS implementation of Rebyte's Agents API; no model calls or agent loop on the phone. */
 class RebyteApi(private val key: String) {
@@ -30,17 +30,22 @@ class RebyteApi(private val key: String) {
                 if (!response.isSuccessful) {
                     // Never echo request headers or raw credentials in errors.
                     val safe = text.replace(key, "[redacted]").take(1000)
-                    throw ApiFailure(response.code, "Rebyte HTTP ${response.code}: $safe")
+                    val code = runCatching { JSONObject(text).optJSONObject("error")?.optString("code") }.getOrNull()
+                    throw ApiFailure(response.code, "Rebyte HTTP ${response.code}: $safe", code)
                 }
                 if (text.isBlank()) JSONObject() else JSONObject(text)
             }
         }
-    suspend fun create(run: Run): JSONObject = request("POST", "/agents/sessions", JSONObject()
-        .put("agent", JSONObject().put("model", run.model)
-            .put("instructions", PhoneTools.instructions).put("tools", PhoneTools.definitions))
-        .put("environment", JSONObject().put("type", "none"))
-        .put("metadata", JSONObject().put("app", "airhand").put("mobile_run_id", run.id))
-        .put("input", run.task))
+    companion object {
+        internal fun sessionRequest(run: Run): JSONObject = JSONObject()
+            .put("agent", JSONObject().put("model", run.model)
+                .put("budget", RunBudget.specification(run.maxCredits))
+                .put("instructions", PhoneTools.instructions).put("tools", PhoneTools.definitions))
+            .put("environment", JSONObject().put("type", "none"))
+            .put("metadata", JSONObject().put("app", "airhand").put("mobile_run_id", run.id))
+            .put("input", run.task)
+    }
+    suspend fun create(run: Run): JSONObject = request("POST", "/agents/sessions", sessionRequest(run))
     suspend fun retrieve(id: String) = request("GET", "/agents/sessions/$id")
     suspend fun findSession(run: Run): String? {
         val page = request("GET", "/agents/sessions?metadata%5Bmobile_run_id%5D=${run.id}&limit=10")

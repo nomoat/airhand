@@ -3,10 +3,12 @@
 ## Automated checks
 
 Run `./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug`.
-Twelve JVM tests cover tool schemas, argument types and integer overflow,
+Nineteen JVM tests cover tool schemas, argument types and integer overflow,
 screenshot coordinate conversion, and avoiding the floating control during
 physical gestures. An impossible collision is rejected, not hidden. Run-link
 tests cover inline Agent IDs, absent identities, and invalid path components.
+Budget tests cover the default, per-run request serialization, rejecting unlimited
+requests, exact server confirmation, unknown usage, budget errors, and terminal state.
 
 Lint is required to finish without errors. Localization, deprecated Android
 UI API, and style warnings are still present in this prototype. The application
@@ -44,6 +46,16 @@ original test history and network settings were restored. The Platform URL was
 checked against Rebyte's session route; viewing the cloud details requires a
 browser login with access to the owning organization.
 
+Version 0.3.4 was upgraded over 0.3.3 on the same emulator. Existing rows and the
+encrypted key survived the schema upgrade; older runs kept a null budget. The
+default $0.20 option and a saved $0.50 selection were checked across a process
+restart. In a real Rebyte test, a task requested thirty successive `phone_wait`
+calls with a $0.10 budget. Rebyte confirmed the limit and ended the task after ten
+calls with 10 reported credits. AirHand showed **Budget reached**, offered no
+Reconnect, and released its task service and screen-on requests. Changing the
+selection afterward did not change that run's saved budget or usage. This test
+does not establish a strict dollar ceiling: the final call can exceed a budget.
+
 These checks do not establish compatibility with every app or Android vendor.
 Xiaomi/Redmi/POCO hardware and release installation
 on the intended Xiaomi test phone remain to be verified. English UI changes and
@@ -71,6 +83,14 @@ release packaging receive a separate build and artifact check.
 10. Check history offline and with an empty database. On an upgrade from 0.3.2,
     confirm existing tasks remain and that an older run's link is saved after
     its first lookup. Tasks without a cloud session should not open a broken URL.
+11. Check the default $0.20 model budget. Select $0.50, restart, and confirm the
+    selection remains. Start a task and verify the Session reports the matching
+    `agent.budget.max_credits`. A paused task must retain its original budget even
+    after changing the selection for new tasks.
+12. On a test account, run a bounded sequence with a small model budget. Confirm
+    `session_budget_exceeded` ends the task, releases its screen-on requests, shows
+    **Budget reached**, and offers no Reconnect. The history should retain the
+    budget and reported usage. The last model call can exceed the selected budget.
 
 For debug builds, inspect the journal with:
 
