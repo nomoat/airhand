@@ -16,6 +16,8 @@ what is happening and keeps **Stop** within reach.
 
 - **No root required.** No connected computer is needed after installation.
 - **Visible actions.** A draggable floating control stays on screen during tasks.
+- **Local run history.** Open **Run history** to revisit tasks and follow their
+  Rebyte links to the cloud execution details. No separate AirHand server is needed.
 - **Screen stays on during tasks.** The floating control keeps the screen bright
   while another app is open. Stop or finish the task to restore normal screen timeout.
 - **Bring your own key.** The current backend is the Rebyte Agents API.
@@ -128,7 +130,7 @@ your own Rebyte API key with Agents API access. See [Rebyte documentation](https
 for account and API setup. No key or API credit is bundled. AirHand's source and
 APK are free; cloud usage is billed separately under your provider account.
 
-1. Download `AirHand-0.3.2.apk` from [Releases](https://github.com/nomoat/airhand/releases/latest).
+1. Download `AirHand-0.3.3.apk` from [Releases](https://github.com/nomoat/airhand/releases/latest).
 2. Open the APK on your phone. If Android asks, allow this installation source.
 3. Open **AirHand**, select **Set API key**, and save your Rebyte key.
 4. Select **AirHand control**, read the disclosure, and open its settings page.
@@ -143,6 +145,24 @@ APK are free; cloud usage is billed separately under your provider account.
 
 The universal APK does not require Google Play Services. Enter tasks as text;
 the × button clears the input without changing the current run or saved API key.
+
+### Review previous runs
+
+Select **Run history** on the home screen. The list shows tasks saved on this
+phone, newest first, with their start time and last recorded status. Tap a run
+to open its Rebyte Platform page in your browser, including turns and execution
+details. Sign in to the Rebyte organization that owns the run; the link does not
+contain your API key or grant public access.
+
+New runs save their link as soon as Rebyte creates the session. Runs retained
+from older app versions also appear. Their link is looked up using your saved
+API key the first time you tap them, then saved locally. A task that never
+received a confirmed cloud session shows **No Rebyte link yet**.
+
+The list is read from the phone's local database, with no cloud list sync or
+separate AirHand server. It remains visible offline. Viewing the cloud page or
+looking up an older link requires a connection. Clearing app data or uninstalling
+removes the local history; it does not delete runs in Rebyte.
 
 ### Get a Rebyte API key
 
@@ -230,7 +250,7 @@ Release builds are not debuggable and cannot import a key from a debug file.
 debug-build helpers. They are not needed on a user's phone.
 
 ```sh
-python3 scripts/package_source.py --output /path/to/AirHand-0.3.2-source.zip
+python3 scripts/package_source.py --output /path/to/AirHand-0.3.3-source.zip
 ```
 
 The source exporter uses an explicit allowlist. It excludes build output,

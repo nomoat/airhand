@@ -29,12 +29,20 @@ No key is included in the APK or source archive.
 
 ## Local history and cloud history
 
-The app keeps task text, session IDs, activity messages, and cached tool results
+The app keeps task text, start times, last recorded status, session IDs, Rebyte
+Platform links, activity messages, and cached tool results
 in its private SQLite database. Cached results can include screenshots and UI
 text. Uninstalling the app or clearing its Android app data removes local data.
 This does not delete cloud session history. Manage cloud data and API access in
 the organization that owns your key; the cloud provider's terms govern its
 processing and retention.
+
+**Run history** reads this local database; it does not upload or synchronize the
+list to a separate server. Tapping a run opens its Rebyte Platform link in your
+browser, where your Rebyte login and organization access apply. The URL contains
+Agent and Session IDs, never your API key. For older local records without a
+saved link, tapping the run retrieves that session once with your saved API key
+and stores the resulting link locally. Existing saved links need no API lookup.
 
 ## Permissions and screen behavior
 

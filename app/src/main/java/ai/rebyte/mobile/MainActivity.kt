@@ -172,6 +172,8 @@ class MainActivity : Activity() {
         card.addSpace(10)
         card.addFull(label("During a task, screen text and screenshots are sent to Rebyte. Keep your phone unlocked. The floating control shows each step and lets you stop at any time.", 12f, muted))
         body.addSpace(16)
+        body.addFull(button("Run history") { startActivity(Intent(this, RunHistoryActivity::class.java)) })
+        body.addSpace(12)
         val config = LinearLayout(this)
         val access = button("AirHand control") {
             AlertDialog.Builder(this).setTitle("Enable AirHand control")
@@ -279,18 +281,7 @@ class MainActivity : Activity() {
         resume.visibility = if (!active && unfinished && run?.state != "needs_review") View.VISIBLE else View.GONE
         stop.visibility = if (active || unfinished) View.VISIBLE else View.GONE
         if (run != null) {
-            val stateLabel = when (run.state) {
-                "created" -> "Ready to start"
-                "creating" -> "Creating cloud task"
-                "running" -> "Running"
-                "paused" -> "Connection paused"
-                "needs_review" -> "Review the previous action"
-                "completed" -> "Completed"
-                "failed" -> "Failed"
-                "cancelled" -> "Stopped"
-                else -> run.state
-            }
-            logs.text = "Status: $stateLabel\n\n${store.logText(run.id)}"
+            logs.text = "Status: ${run.stateLabel}\n\n${store.logText(run.id)}"
         }
     }
     override fun onResume() { super.onResume(); handler.post(refresh) }

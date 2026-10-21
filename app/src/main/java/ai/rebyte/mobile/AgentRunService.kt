@@ -139,7 +139,7 @@ class AgentRunService : Service() {
         requireNotNull(PhoneAccessibilityService.connected) { "Enable AirHand control in accessibility settings first." }
         val session = initial.sessionId ?: if (initial.state == "created") {
             store.update(initial.id, "creating")
-            api.create(initial).getString("id").also { store.update(initial.id, "running", it) }
+            api.create(initial).also { store.rememberSession(initial.id, it) }.getString("id")
         } else api.recover(initial).also { store.update(initial.id, "running", it) }
         store.update(initial.id, "running", session)
         store.log(initial.id, "Connected to Rebyte · ${initial.model}\nSession: $session")
@@ -154,6 +154,7 @@ class AgentRunService : Service() {
                 return
             }
             val state = api.retrieve(session)
+            if (store.get(initial.id).cloudUrl == null) store.rememberSession(initial.id, state)
             when (state.getString("status")) {
                 "requires_action" -> {
                     val actions = state.getJSONArray("required_actions")

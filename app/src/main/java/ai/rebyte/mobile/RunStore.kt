@@ -7,18 +7,33 @@ import android.database.sqlite.SQLiteOpenHelper
 import org.json.JSONObject
 import java.util.UUID
 
-data class Run(val id: String, val task: String, val model: String, val sessionId: String?, val state: String)
+data class Run(val id: String, val task: String, val model: String, val sessionId: String?, val state: String,
+    val createdAt: Long, val cloudUrl: String?) {
+    val stateLabel: String get() = when (state) {
+        "created" -> "Ready to start"
+        "creating" -> "Creating cloud task"
+        "running" -> "Running"
+        "paused" -> "Connection paused"
+        "needs_review" -> "Review the previous action"
+        "completed" -> "Completed"
+        "failed" -> "Failed"
+        "cancelled" -> "Stopped"
+        else -> state
+    }
+}
 class CallLimitReached : Exception("Reached the 40-step limit")
 class UncertainCall : Exception("The previous action was interrupted and its result is unknown. Stop this task and start a new one to avoid repeating an action.")
 
 /** Durable call journal: mark before touching the phone; persist the result before HTTP submission. */
-class RunStore(context: Context) : SQLiteOpenHelper(context, "runs.db", null, 1) {
+class RunStore(context: Context) : SQLiteOpenHelper(context, "runs.db", null, 2) {
     override fun onCreate(db: SQLiteDatabase) {
-        db.execSQL("CREATE TABLE runs (id TEXT PRIMARY KEY, task TEXT NOT NULL, model TEXT NOT NULL, session TEXT, state TEXT NOT NULL, created INTEGER NOT NULL)")
+        db.execSQL("CREATE TABLE runs (id TEXT PRIMARY KEY, task TEXT NOT NULL, model TEXT NOT NULL, session TEXT, state TEXT NOT NULL, created INTEGER NOT NULL, cloud_url TEXT)")
         db.execSQL("CREATE TABLE calls (run TEXT NOT NULL, id TEXT NOT NULL, fingerprint TEXT NOT NULL, result TEXT, PRIMARY KEY(run,id))")
         db.execSQL("CREATE TABLE logs (id INTEGER PRIMARY KEY AUTOINCREMENT, run TEXT NOT NULL, text TEXT NOT NULL)")
     }
-    override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) = error("Unsupported database upgrade")
+    override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
+        if (oldVersion < 2) db.execSQL("ALTER TABLE runs ADD COLUMN cloud_url TEXT")
+    }
     fun create(task: String, model: String): Run {
         val id = UUID.randomUUID().toString()
         writableDatabase.insertOrThrow("runs", null, ContentValues().apply {
@@ -28,10 +43,23 @@ class RunStore(context: Context) : SQLiteOpenHelper(context, "runs.db", null, 1)
     }
     fun get(id: String): Run = readableDatabase.rawQuery("SELECT * FROM runs WHERE id=?", arrayOf(id)).use {
         check(it.moveToFirst()) { "Task not found." }
-        Run(it.getString(0), it.getString(1), it.getString(2), it.getString(3), it.getString(4))
+        Run(it.getString(0), it.getString(1), it.getString(2), it.getString(3), it.getString(4), it.getLong(5), it.getString(6))
     }
     fun latest(): Run? = readableDatabase.rawQuery("SELECT id FROM runs ORDER BY created DESC LIMIT 1", null).use {
         if (it.moveToFirst()) get(it.getString(0)) else null
+    }
+    fun history(): List<Run> = readableDatabase.rawQuery("SELECT * FROM runs ORDER BY created DESC, rowid DESC", null).use { c ->
+        buildList { while (c.moveToNext()) add(Run(c.getString(0), c.getString(1), c.getString(2),
+            c.getString(3), c.getString(4), c.getLong(5), c.getString(6))) }
+    }
+    fun rememberSession(id: String, session: JSONObject) {
+        val sessionId = session.getString("id")
+        val previous = get(id).sessionId
+        check(previous == null || previous == sessionId) { "The cloud returned a different session." }
+        writableDatabase.update("runs", ContentValues().apply {
+            put("session", sessionId)
+            RebyteRunLink.fromSession(session)?.let { put("cloud_url", it) }
+        }, "id=?", arrayOf(id))
     }
     fun update(id: String, state: String, session: String? = null) {
         writableDatabase.update("runs", ContentValues().apply {

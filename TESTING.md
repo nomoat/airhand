@@ -3,9 +3,10 @@
 ## Automated checks
 
 Run `./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug`.
-Nine JVM tests cover tool schemas, argument types and integer overflow,
+Twelve JVM tests cover tool schemas, argument types and integer overflow,
 screenshot coordinate conversion, and avoiding the floating control during
-physical gestures. An impossible collision is rejected, not hidden.
+physical gestures. An impossible collision is rejected, not hidden. Run-link
+tests cover inline Agent IDs, absent identities, and invalid path components.
 
 Lint is required to finish without errors. Localization, deprecated Android
 UI API, and style warnings are still present in this prototype. The application
@@ -33,6 +34,16 @@ The original test-device settings were restored. The clear-input button was also
 checked with empty and nonempty text; it clears the field, hides when empty, and
 allows typing again. The voice button is no longer present.
 
+Version 0.3.3 was upgraded over 0.3.2 on the Android 15 emulator. The database
+migration preserved the existing run and encrypted key. Tapping that older run
+retrieved and saved its Platform link and launched the browser. A new real Rebyte
+task completed and saved its link automatically. Both entries remained visible
+in newest-first order after a process restart with Wi-Fi and mobile data disabled.
+The empty-history screen was also checked with an isolated database, then the
+original test history and network settings were restored. The Platform URL was
+checked against Rebyte's session route; viewing the cloud details requires a
+browser login with access to the owning organization.
+
 These checks do not establish compatibility with every app or Android vendor.
 Xiaomi/Redmi/POCO hardware and release installation
 on the intended Xiaomi test phone remain to be verified. English UI changes and
@@ -54,6 +65,12 @@ release packaging receive a separate build and artifact check.
 8. Temporarily set a short screen timeout on a test device. While a task waits
    in another app, verify the screen remains bright beyond that timeout. Stop
    the task and verify the normal screen timeout resumes. Restore the test setting.
+9. Open **Run history**. Confirm tasks are newest first, with a time and status.
+   Tap a completed run and check that the browser opens its Rebyte session page.
+   Return to AirHand and verify the history survives restarting the app.
+10. Check history offline and with an empty database. On an upgrade from 0.3.2,
+    confirm existing tasks remain and that an older run's link is saved after
+    its first lookup. Tasks without a cloud session should not open a broken URL.
 
 For debug builds, inspect the journal with:
 
